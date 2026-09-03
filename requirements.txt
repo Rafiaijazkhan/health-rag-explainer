@@ -1,0 +1,6 @@
+flask
+python-dotenv
+chromadb
+sentence-transformers
+groq
+gunicorn

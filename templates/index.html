@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HealthLoop</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pearl: #E9D4C3;
+    --pearl-light: #FBF6EF;
+    --navy: #13273F;
+    --olive: #55572C;
+    --red: #4E0000;
+    --cocoa: #6F4E37;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Quicksand', sans-serif;
+    background: linear-gradient(180deg, var(--pearl) 0%, var(--pearl-light) 340px, #FFFFFF 340px);
+    color: var(--navy);
+    display: flex;
+    justify-content: center;
+    padding: 30px 15px 60px;
+    min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 700px; }
+
+  h1 {
+    text-align: center;
+    color: var(--red);
+    font-weight: 700;
+    font-size: 28px;
+    margin-bottom: 6px;
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--navy);
+    opacity: 0.75;
+    font-size: 14.5px;
+    margin-bottom: 26px;
+  }
+
+  .main-card {
+    background: #FFFFFF;
+    border-radius: 28px;
+    box-shadow: 0 10px 30px rgba(19,39,63,0.08);
+    padding: 30px 34px;
+  }
+
+  .section-label {
+    color: var(--red);
+    font-weight: 700;
+    font-size: 12.5px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .topics-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 26px;
+  }
+  .topic-chip {
+    background: var(--olive);
+    border: none;
+    border-radius: 999px;
+    padding: 10px 20px;
+    font-family: 'Quicksand', sans-serif;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #FFFFFF;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .topic-chip:hover { background: var(--navy); transform: translateY(-1px); }
+
+  .input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+  #questionInput {
+    flex: 1;
+    padding: 14px 18px;
+    border-radius: 16px;
+    border: 2px solid var(--pearl);
+    font-family: 'Quicksand', sans-serif;
+    font-size: 15px;
+    background: var(--pearl-light);
+    color: var(--navy);
+    outline: none;
+  }
+  #questionInput:focus { border-color: var(--navy); }
+
+  .mic-btn {
+    background: var(--pearl-light);
+    border: 2px solid var(--pearl);
+    border-radius: 16px;
+    width: 52px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .mic-btn:hover { border-color: var(--navy); }
+  .mic-btn.listening {
+    background: var(--red);
+    border-color: var(--red);
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(78,0,0,0.5); }
+    50% { box-shadow: 0 0 0 8px rgba(78,0,0,0); }
+  }
+
+  .send {
+    background: var(--red);
+    color: #FFFFFF;
+    border: none;
+    border-radius: 16px;
+    padding: 0 28px;
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .send:hover { background: #3a0000; }
+
+  #results { display: flex; flex-direction: column; gap: 18px; }
+
+  .user-bubble {
+    align-self: flex-end;
+    background: var(--red);
+    color: #FFFFFF;
+    font-weight: 600;
+    font-size: 15px;
+    padding: 12px 20px;
+    border-radius: 999px;
+    max-width: 80%;
+  }
+
+  .answer-card {
+    background: var(--pearl-light);
+    border-left: 6px solid var(--red);
+    border-radius: 18px;
+    padding: 22px 26px;
+  }
+  .results-header {
+    font-weight: 700;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+  .answer-text {
+    font-size: 15.5px;
+    line-height: 1.6;
+    color: var(--navy);
+    margin-bottom: 16px;
+    white-space: pre-wrap;
+  }
+  .source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--olive);
+    color: #FFFFFF;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    margin-bottom: 16px;
+  }
+  .source-badge svg { width: 12px; height: 12px; }
+
+  .feedback-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .fb-btn {
+    background: transparent;
+    border: 1.5px solid var(--navy);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-family: 'Quicksand', sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--navy);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .fb-btn:hover { background: var(--navy); color: #FFFFFF; }
+  .fb-btn.selected { background: var(--olive); color: #FFFFFF; border-color: var(--olive); }
+
+  .translate-box {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--pearl);
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--navy);
+  }
+
+  .related-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--pearl);
+  }
+  .related-chip {
+    background: var(--pearl);
+    border: none;
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-family: 'Quicksand', sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--red);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .related-chip:hover { background: var(--olive); color: #FFFFFF; transform: translateY(-1px); }
+
+  .loading-text {
+    text-align: center;
+    color: var(--olive);
+    font-size: 14px;
+    padding: 16px;
+  }
+
+  .error-card {
+    background: #FBEAEA;
+    border: 2px solid #E0A6A6;
+    border-radius: 16px;
+    padding: 18px 22px;
+    color: var(--red);
+    font-size: 14.5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .retry-btn {
+    background: var(--red);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .retry-btn:hover { background: #3a0000; transform: rotate(90deg); }
+  .retry-btn svg { width: 20px; height: 20px; }
+  .retry-btn.spinning svg { animation: spin 0.8s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  .timeout-inline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>HealthLoop</h1>
+  <div class="subtitle">Ask a health question and get a clear, source-backed answer.</div>
+
+  <div class="main-card">
+    <div class="section-label">Try asking about</div>
+    <div class="topics-row">
+      <button class="topic-chip" onclick="askTopic('headache')">Headache</button>
+      <button class="topic-chip" onclick="askTopic('diabetes')">Diabetes</button>
+      <button class="topic-chip" onclick="askTopic('allergies')">Allergies</button>
+      <button class="topic-chip" onclick="askTopic('anxiety')">Anxiety</button>
+      <button class="topic-chip" onclick="askTopic('back pain')">Back pain</button>
+      <button class="topic-chip" onclick="askTopic('asthma')">Asthma</button>
+      <button class="topic-chip" onclick="askTopic('insomnia')">Insomnia</button>
+      <button class="topic-chip" onclick="askTopic('common cold')">Common cold</button>
+    </div>
+
+    <div class="input-row">
+      <input type="text" id="questionInput" placeholder="Type a health question..." />
+      <button class="mic-btn" id="micBtn" onclick="startVoiceInput()" title="Speak your question">🎤</button>
+      <button class="send" id="askBtn">Ask</button>
+    </div>
+
+    <div id="results"></div>
+  </div>
+</div>
+
+<script>
+const input = document.getElementById('questionInput');
+const askBtn = document.getElementById('askBtn');
+const results = document.getElementById('results');
+
+const RETRY_ICON = '<svg viewBox="0 0 24 24" fill="none"><path d="M4 4v6h6M20 20v-6h-6M4.5 15a8 8 0 0 0 14.5 3.5M19.5 9a8 8 0 0 0-14.5-3.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+askBtn.addEventListener('click', () => askQuestion());
+input.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') askQuestion();
+});
+
+function askTopic(topic) {
+  input.value = 'What is ' + topic + '?';
+  askQuestion();
+}
+
+function askRelated(btn) {
+  askQuestion(btn.textContent);
+}
+
+function scrollToBottom() {
+  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+}
+
+async function askQuestion(overrideQuestion) {
+  const question = (overrideQuestion !== undefined ? overrideQuestion : input.value).trim();
+  if (!question) return;
+
+  const userBubble = document.createElement('div');
+  userBubble.className = 'user-bubble';
+  userBubble.textContent = question;
+  results.appendChild(userBubble);
+
+  const card = document.createElement('div');
+  card.className = 'answer-card';
+  card.innerHTML = '<div class="loading-text">Thinking...</div>';
+  results.appendChild(card);
+
+  if (overrideQuestion === undefined) input.value = '';
+
+  scrollToBottom();
+  await runAsk(question, card);
+  scrollToBottom();
+}
+
+async function retryAsk(btn, question) {
+  const card = btn.closest('.answer-card');
+  btn.classList.add('spinning');
+  card.innerHTML = '<div class="loading-text">Retrying...</div>';
+  await runAsk(question, card);
+  scrollToBottom();
+}
+
+async function runAsk(question, card) {
+  try {
+    const res = await fetch('/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: question })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      renderError(card, data.error || 'Something went wrong.', question);
+      return;
+    }
+
+    const isTimeout = (data.answer || '').toLowerCase().includes('connection timed out');
+
+    if (isTimeout) {
+      card.innerHTML =
+        '<div class="results-header">Here\'s what I found</div>' +
+        '<div class="timeout-inline">' +
+          '<div class="answer-text answer-text-content" style="margin-bottom:0;">' + data.answer + '</div>' +
+          '<button class="retry-btn" onclick="retryAsk(this, ' + JSON.stringify(question) + ')" title="Retry">' + RETRY_ICON + '</button>' +
+        '</div>';
+      return;
+    }
+
+    let relatedHtml = '';
+    if (data.related && data.related.length > 0) {
+      relatedHtml = '<div class="related-row">';
+      data.related.forEach(q => {
+        relatedHtml += '<button class="related-chip" onclick="askRelated(this)">' + q + '</button>';
+      });
+      relatedHtml += '</div>';
+    }
+
+    card.innerHTML =
+      '<div class="results-header">Here\'s what I found</div>' +
+      '<div class="answer-text answer-text-content">' + data.answer + '</div>' +
+      '<div class="source-badge">' +
+        '<svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+        data.source +
+      '</div>' +
+      '<div class="feedback-row">' +
+        '<button class="fb-btn" onclick="copyAnswer(this)">Copy</button>' +
+        '<button class="fb-btn" onclick="pickFeedback(this)">Helpful</button>' +
+        '<button class="fb-btn" onclick="pickFeedback(this)">Not quite</button>' +
+        '<button class="fb-btn" onclick="translateAnswer(this, \'Urdu\')">Translate to Urdu</button>' +
+        '<button class="fb-btn" onclick="translateAnswer(this, \'Roman Urdu\')">Roman Urdu</button>' +
+      '</div>' +
+      '<div class="translate-box" style="display:none;"></div>' +
+      relatedHtml;
+
+  } catch (err) {
+    renderError(card, 'Could not reach the server. Is it running?', question);
+  }
+}
+
+function renderError(card, message, question) {
+  card.innerHTML =
+    '<div class="error-card">' +
+      '<span>' + message + '</span>' +
+      '<button class="retry-btn" onclick="retryAsk(this, ' + JSON.stringify(question) + ')" title="Retry">' + RETRY_ICON + '</button>' +
+    '</div>';
+}
+
+function pickFeedback(btn) {
+  const row = btn.parentElement;
+  row.querySelectorAll('.fb-btn').forEach(b => {
+    if (b.textContent === 'Helpful' || b.textContent === 'Not quite') {
+      b.classList.remove('selected');
+    }
+  });
+  if (btn.textContent === 'Helpful' || btn.textContent === 'Not quite') {
+    btn.classList.add('selected');
+  }
+}
+
+function copyAnswer(btn) {
+  const card = btn.closest('.answer-card');
+  const text = card.querySelector('.answer-text-content').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const original = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  });
+}
+
+async function translateAnswer(btn, language) {
+  const card = btn.closest('.answer-card');
+  const text = card.querySelector('.answer-text-content').textContent;
+  const box = card.querySelector('.translate-box');
+
+  box.style.display = 'block';
+  box.textContent = 'Translating...';
+
+  try {
+    const res = await fetch('/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text, language: language })
+    });
+    const data = await res.json();
+    box.textContent = data.translated || data.error || 'Translation failed.';
+  } catch (err) {
+    box.textContent = 'Could not reach the server.';
+  }
+}
+
+let recognition;
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+
+  recognition.onresult = function(event) {
+    const transcript = event.results[0][0].transcript;
+    input.value = transcript;
+    document.getElementById('micBtn').classList.remove('listening');
+  };
+  recognition.onend = function() {
+    document.getElementById('micBtn').classList.remove('listening');
+  };
+  recognition.onerror = function() {
+    document.getElementById('micBtn').classList.remove('listening');
+  };
+}
+
+function startVoiceInput() {
+  if (!recognition) {
+    alert('Voice input is not supported in this browser. Try Chrome.');
+    return;
+  }
+  document.getElementById('micBtn').classList.add('listening');
+  recognition.start();
+}
+</script>
+</body>
+</html>
