@@ -83,7 +83,7 @@
     gap: 8px;
     margin-bottom: 28px;
   }
-  #questionInput {
+  #questionInput, #med1Input, #med2Input {
     flex: 1;
     padding: 14px 18px;
     border-radius: 16px;
@@ -95,7 +95,7 @@
     outline: none;
     min-width: 0;
   }
-  #questionInput:focus { border-color: var(--navy); }
+  #questionInput:focus, #med1Input:focus, #med2Input:focus { border-color: var(--navy); }
 
   .mic-btn {
     background: var(--pearl-light);
@@ -134,6 +134,7 @@
   .send:disabled { opacity: 0.6; cursor: not-allowed; }
 
   #results { display: flex; flex-direction: column; gap: 18px; }
+  #interactionResult { margin-bottom: 10px; }
 
   .user-bubble {
     align-self: flex-end;
@@ -307,7 +308,6 @@
   .side-tool-toggle .chevron {
     transition: transform 0.2s;
     font-size: 10px;
-    display: inline-block;
   }
   .side-tool-toggle.open .chevron { transform: rotate(90deg); }
 
@@ -462,7 +462,7 @@ async function askQuestion(overrideQuestion) {
   if (overrideQuestion === undefined) input.value = '';
 
   scrollToBottom();
-  await runAsk(question, card);
+  await runAsk(question, card, true);
   scrollToBottom();
 }
 
@@ -471,11 +471,11 @@ async function retryAsk(btn, question) {
   btn.classList.add('spinning');
   btn.disabled = true;
   card.innerHTML = '<div class="loading-text">Retrying...</div>';
-  await runAsk(question, card);
+  await runAsk(question, card, false);
   scrollToBottom();
 }
 
-async function runAsk(question, card) {
+async function runAsk(question, card, allowAutoRetry) {
   try {
     const res = await fetch('/ask', {
       method: 'POST',
@@ -487,11 +487,21 @@ async function runAsk(question, card) {
     try {
       data = await res.json();
     } catch (parseErr) {
+      if (allowAutoRetry) {
+        card.innerHTML = '<div class="loading-text">Still working on it...</div>';
+        await runAsk(question, card, false);
+        return;
+      }
       renderError(card, 'The server sent back an unexpected response. Please try again.', question);
       return;
     }
 
     if (!res.ok) {
+      if (allowAutoRetry) {
+        card.innerHTML = '<div class="loading-text">Still working on it...</div>';
+        await runAsk(question, card, false);
+        return;
+      }
       renderError(card, data.error || 'Something went wrong.', question);
       return;
     }
@@ -499,6 +509,11 @@ async function runAsk(question, card) {
     const isTimeout = (data.answer || '').toLowerCase().includes('connection timed out');
 
     if (isTimeout) {
+      if (allowAutoRetry) {
+        card.innerHTML = '<div class="loading-text">Still working on it...</div>';
+        await runAsk(question, card, false);
+        return;
+      }
       card.innerHTML =
         '<div class="results-header">Here\'s what I found</div>' +
         '<div class="timeout-inline">' +
@@ -535,6 +550,11 @@ async function runAsk(question, card) {
       relatedHtml;
 
   } catch (err) {
+    if (allowAutoRetry) {
+      card.innerHTML = '<div class="loading-text">Still working on it...</div>';
+      await runAsk(question, card, false);
+      return;
+    }
     renderError(card, 'Could not reach the server. Is it running?', question);
   }
 }
