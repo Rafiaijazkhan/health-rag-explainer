@@ -4,3 +4,5 @@ chromadb
 sentence-transformers
 groq
 gunicorn
+flask-sqlalchemy
+flask-login

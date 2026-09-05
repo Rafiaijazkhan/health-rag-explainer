@@ -1,10 +1,17 @@
 import os
 import time
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect, url_for, flash
 from dotenv import load_dotenv
 import chromadb
 from sentence_transformers import SentenceTransformer
 from groq import Groq
+
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import (
+    LoginManager, UserMixin, login_user, logout_user,
+    login_required, current_user
+)
+from werkzeug.security import generate_password_hash, check_password_hash
 
 load_dotenv()
 
@@ -15,6 +22,30 @@ client_db = chromadb.PersistentClient(path="chroma_db")
 collection = client_db.get_or_create_collection(name="health_topics")
 
 app = Flask(__name__)
+
+# --- NEW: auth setup ---
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-change-me")
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///users.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db = SQLAlchemy(app)
+
+login_manager = LoginManager(app)
+login_manager.login_view = "login"  # where @login_required sends anonymous users
+
+
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(150), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
+# --- end auth setup ---
 
 answer_cache = {}
 
@@ -163,8 +194,72 @@ Translation:"""
 
 
 @app.route("/")
+@login_required
 def home():
     return render_template("index.html")
+
+
+# --- NEW: auth routes ---
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    if current_user.is_authenticated:
+        return redirect(url_for("home"))
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        if not email or not password:
+            flash("Please fill in both fields.")
+            return redirect(url_for("signup"))
+
+        if len(password) < 6:
+            flash("Password must be at least 6 characters.")
+            return redirect(url_for("signup"))
+
+        if User.query.filter_by(email=email).first():
+            flash("An account with that email already exists. Try signing in instead.")
+            return redirect(url_for("login"))
+
+        new_user = User(email=email, password_hash=generate_password_hash(password))
+        db.session.add(new_user)
+        db.session.commit()
+
+        login_user(new_user)
+        return redirect(request.args.get("next") or url_for("home"))
+
+    return render_template("signup.html")
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for("home"))
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        user = User.query.filter_by(email=email).first()
+
+        if user and check_password_hash(user.password_hash, password):
+            login_user(user)
+            return redirect(request.args.get("next") or url_for("home"))
+
+        flash("Incorrect email or password.")
+        return redirect(url_for("login"))
+
+    return render_template("login.html")
+
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("home"))
+
+
+# --- end auth routes ---
 
 
 @app.route("/ask", methods=["POST"])
@@ -213,6 +308,9 @@ def translate():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+with app.app_context():
+    db.create_all()  # creates users.db and the User table if they don't exist yet
 
 if __name__ == "__main__":
     app.run(debug=True)
