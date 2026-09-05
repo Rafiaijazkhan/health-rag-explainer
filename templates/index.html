@@ -93,6 +93,7 @@
     background: var(--pearl-light);
     color: var(--navy);
     outline: none;
+    min-width: 0;
   }
   #questionInput:focus { border-color: var(--navy); }
 
@@ -127,8 +128,10 @@
     font-size: 15px;
     cursor: pointer;
     transition: all 0.2s;
+    white-space: nowrap;
   }
   .send:hover { background: #3a0000; }
+  .send:disabled { opacity: 0.6; cursor: not-allowed; }
 
   #results { display: flex; flex-direction: column; gap: 18px; }
 
@@ -264,6 +267,7 @@
     transition: all 0.2s;
   }
   .retry-btn:hover { background: #3a0000; transform: rotate(90deg); }
+  .retry-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
   .retry-btn svg { width: 20px; height: 20px; }
   .retry-btn.spinning svg { animation: spin 0.8s linear infinite; }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -274,6 +278,102 @@
     justify-content: space-between;
     gap: 14px;
     margin-bottom: 16px;
+  }
+
+  @media (max-width: 480px) {
+    .input-row { flex-wrap: wrap; }
+  }
+
+  .side-tool {
+    margin-top: 34px;
+    padding-top: 18px;
+    border-top: 1px dashed var(--pearl);
+  }
+  .side-tool-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    color: var(--cocoa);
+    opacity: 0.75;
+    font-family: 'Quicksand', sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+  .side-tool-toggle:hover { opacity: 1; }
+  .side-tool-toggle .chevron {
+    transition: transform 0.2s;
+    font-size: 10px;
+    display: inline-block;
+  }
+  .side-tool-toggle.open .chevron { transform: rotate(90deg); }
+
+  .side-tool-body {
+    display: none;
+    margin-top: 12px;
+  }
+  .side-tool-body.open { display: block; }
+
+  .side-input-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .side-input {
+    flex: 1;
+    min-width: 120px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    border: 1.5px solid var(--pearl);
+    font-family: 'Quicksand', sans-serif;
+    font-size: 13px;
+    background: var(--pearl-light);
+    color: var(--navy);
+    outline: none;
+  }
+  .side-input:focus { border-color: var(--cocoa); }
+
+  .side-check-btn {
+    background: var(--cocoa);
+    color: #FFFFFF;
+    border: none;
+    border-radius: 10px;
+    padding: 0 16px;
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .side-check-btn:hover { background: #5a3e2c; }
+  .side-check-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  #interactionResult { margin-top: 10px; }
+  .side-answer-card {
+    background: var(--pearl-light);
+    border-left: 4px solid var(--cocoa);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--navy);
+  }
+  .side-loading-text {
+    font-size: 13px;
+    color: var(--cocoa);
+    opacity: 0.8;
+    padding: 6px 0;
+  }
+  .side-error-card {
+    background: #FBEAEA;
+    border: 1.5px solid #E0A6A6;
+    border-radius: 12px;
+    padding: 10px 14px;
+    color: var(--red);
+    font-size: 13px;
   }
 </style>
 </head>
@@ -302,6 +402,21 @@
     </div>
 
     <div id="results"></div>
+
+    <div class="side-tool">
+      <button class="side-tool-toggle" id="sideToolToggle" onclick="toggleSideTool()">
+        <span class="chevron">▶</span>
+        <span>Also check a medicine interaction</span>
+      </button>
+      <div class="side-tool-body" id="sideToolBody">
+        <div class="side-input-row">
+          <input type="text" class="side-input" id="med1Input" placeholder="First medicine..." />
+          <input type="text" class="side-input" id="med2Input" placeholder="Second medicine..." />
+          <button class="side-check-btn" id="checkInteractionBtn">Check</button>
+        </div>
+        <div id="interactionResult"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -354,6 +469,7 @@ async function askQuestion(overrideQuestion) {
 async function retryAsk(btn, question) {
   const card = btn.closest('.answer-card');
   btn.classList.add('spinning');
+  btn.disabled = true;
   card.innerHTML = '<div class="loading-text">Retrying...</div>';
   await runAsk(question, card);
   scrollToBottom();
@@ -366,7 +482,14 @@ async function runAsk(question, card) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question: question })
     });
-    const data = await res.json();
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      renderError(card, 'The server sent back an unexpected response. Please try again.', question);
+      return;
+    }
 
     if (!res.ok) {
       renderError(card, data.error || 'Something went wrong.', question);
@@ -439,11 +562,48 @@ function pickFeedback(btn) {
 function copyAnswer(btn) {
   const card = btn.closest('.answer-card');
   const text = card.querySelector('.answer-text-content').textContent;
-  navigator.clipboard.writeText(text).then(() => {
-    const original = btn.textContent;
+  const original = btn.textContent;
+
+  function showCopied() {
     btn.textContent = 'Copied!';
     setTimeout(() => { btn.textContent = original; }, 1500);
-  });
+  }
+
+  function showFailed() {
+    btn.textContent = 'Copy failed';
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(showCopied).catch(() => {
+      fallbackCopy(text, showCopied, showFailed);
+    });
+  } else {
+    fallbackCopy(text, showCopied, showFailed);
+  }
+}
+
+function fallbackCopy(text, onSuccess, onFail) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  ta.style.top = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try {
+    const successful = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (successful) {
+      onSuccess();
+    } else {
+      onFail();
+    }
+  } catch (err) {
+    document.body.removeChild(ta);
+    onFail();
+  }
 }
 
 async function translateAnswer(btn, language) {
@@ -464,6 +624,63 @@ async function translateAnswer(btn, language) {
     box.textContent = data.translated || data.error || 'Translation failed.';
   } catch (err) {
     box.textContent = 'Could not reach the server.';
+  }
+}
+
+const checkInteractionBtn = document.getElementById('checkInteractionBtn');
+const med1Input = document.getElementById('med1Input');
+const med2Input = document.getElementById('med2Input');
+
+checkInteractionBtn.addEventListener('click', checkInteraction);
+med1Input.addEventListener('keydown', function(e) { if (e.key === 'Enter') checkInteraction(); });
+med2Input.addEventListener('keydown', function(e) { if (e.key === 'Enter') checkInteraction(); });
+
+function toggleSideTool() {
+  const toggle = document.getElementById('sideToolToggle');
+  const body = document.getElementById('sideToolBody');
+  toggle.classList.toggle('open');
+  body.classList.toggle('open');
+}
+
+async function checkInteraction() {
+  const med1 = med1Input.value.trim();
+  const med2 = med2Input.value.trim();
+  const box = document.getElementById('interactionResult');
+
+  if (!med1 || !med2) {
+    box.innerHTML = '<div class="side-error-card">Please enter both medicine names.</div>';
+    return;
+  }
+
+  checkInteractionBtn.disabled = true;
+  box.innerHTML = '<div class="side-loading-text">Checking interaction...</div>';
+
+  try {
+    const res = await fetch('/interaction', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ med1: med1, med2: med2 })
+    });
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      box.innerHTML = '<div class="side-error-card">The server sent an unexpected response.</div>';
+      return;
+    }
+
+    if (!res.ok) {
+      box.innerHTML = '<div class="side-error-card">' + (data.error || 'Something went wrong.') + '</div>';
+      return;
+    }
+
+    box.innerHTML = '<div class="side-answer-card">' + (data.result || 'No information available.') + '</div>';
+
+  } catch (err) {
+    box.innerHTML = '<div class="side-error-card">Could not reach the server. Is it running?</div>';
+  } finally {
+    checkInteractionBtn.disabled = false;
   }
 }
 
